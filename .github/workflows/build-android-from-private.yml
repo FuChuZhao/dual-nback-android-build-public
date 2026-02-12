@@ -1,0 +1,86 @@
+name: build-android-from-private
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Private source repo, e.g. owner/repo"
+        required: true
+        type: string
+      source_ref:
+        description: "Source ref (branch/tag/sha)"
+        required: true
+        default: "main"
+        type: string
+      artifact_name:
+        description: "Artifact name"
+        required: true
+        default: "dual-nback-android-ci-bundle"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  android-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout public workflow repo
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key for private source clone
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.SOURCE_REPO_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Clone private source repository
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${{ inputs.source_ref }}" \
+            "git@github.com:${{ inputs.source_repo }}.git" source
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept licenses and install SDK packages
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build Android project from private repo script
+        shell: bash
+        working-directory: source
+        env:
+          CI_ARTIFACT_DIR: ${{ github.workspace }}/ci_artifacts
+        run: |
+          chmod +x tool/ci/android-ci-build.sh
+          tool/ci/android-ci-build.sh
+
+      - name: Upload Android CI artifact bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: |
+            ci_artifacts/summary.md
+            ci_artifacts/logs
+            ci_artifacts/app-debug.apk
+          if-no-files-found: warn
+          retention-days: 1
