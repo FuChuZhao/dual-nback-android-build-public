@@ -61,7 +61,9 @@ jobs:
       - name: Accept licenses and install SDK packages
         shell: bash
         run: |
-          yes | sdkmanager --licenses
+          set +o pipefail
+          yes | sdkmanager --licenses > /tmp/android-sdk-licenses.log
+          set -o pipefail
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
       - name: Build Android project from private repo script
