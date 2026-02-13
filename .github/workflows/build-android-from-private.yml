@@ -24,7 +24,7 @@ permissions:
 jobs:
   android-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 80
 
     steps:
       - name: Checkout public workflow repo
@@ -75,6 +75,20 @@ jobs:
           chmod +x tool/ci/android-ci-build.sh
           tool/ci/android-ci-build.sh
 
+      - name: Run Android UI walkthrough and screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            cd source
+            chmod +x tool/ci/android-ui-e2e.sh
+            CI_ARTIFACT_DIR="${{ github.workspace }}/ci_artifacts" tool/ci/android-ui-e2e.sh
+
       - name: Upload Android CI artifact bundle
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,5 +98,6 @@ jobs:
             ci_artifacts/summary.md
             ci_artifacts/logs
             ci_artifacts/app-debug.apk
+            ci_artifacts/screenshots
           if-no-files-found: warn
           retention-days: 1
