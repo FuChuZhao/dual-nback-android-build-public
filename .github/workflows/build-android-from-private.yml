@@ -93,12 +93,7 @@ jobs:
           disable-linux-hw-accel: false
           emulator-boot-timeout: 900
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            set -euxo pipefail
-            cd "${GITHUB_WORKSPACE}/source"
-            ls -la tool/ci
-            chmod +x tool/ci/android-ui-e2e.sh
-            CI_ARTIFACT_DIR="${{ github.workspace }}/ci_artifacts" bash -x tool/ci/android-ui-e2e.sh
+          script: bash -euxo pipefail -c 'cd "$GITHUB_WORKSPACE/source" && ls -la tool/ci && chmod +x tool/ci/android-ui-e2e.sh && CI_ARTIFACT_DIR="${{ github.workspace }}/ci_artifacts" bash -x tool/ci/android-ui-e2e.sh'
 
       - name: Upload Android CI artifact bundle
         if: always()
